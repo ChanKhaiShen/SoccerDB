@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="EN">
+    <header>
+        <title>Login</title>
+    </header>
+
+    <head>
+        <h1>Login</h1>
+    </head>
+
+    <body>
+        <a href="/login">Login</a>
+        <a href="/register">Register</a>
+        <p/>
+        <label for="username">Username: </label>
+        <input type="text" id="username" value="" required></input>
+        <p/>
+        <label for="password">Password: </label>
+        <input type="password" id="password" value="" required></input>
+        <p/>
+        <button onClick="login()">Login</button>
+        <p id="error" style="color:red;"></p>
+
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/js-md5@0.7.3/build/md5.min.js"></script>
+        <script>
+            function login() {
+                const username = document.getElementById("username").value;
+                const password = document.getElementById("password").value;
+
+                const hashedPassword = md5(password);
+
+                axios.post('/login', {
+                    username: username,
+                    pasword: hashedPassword
+                }).then(response=>{
+                    window.location.href = '/home';
+
+                }).catch(error=>{
+                    if (error.response.status === 403) {
+                        document.getElementById("error").innerHTML = error.response.data.message;
+                        return;
+                    }
+
+                    if (error.response.status === 500) {
+                        document.getElementById("error").innerHTML = 'Please try again';
+                        return;
+                    }
+
+                    document.getElementById("searcherror").innerHTML = error;
+                });
+            }
+        </script>
+    </body>
+</html>

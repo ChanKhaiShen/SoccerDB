@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="EN">
+    <header>
+        <title>Bookmark</title>
+    </header>
+
+    <head>
+        <h1 >Bookmarked Events</h1>
+    </head>
+
+    <body>
+        <a href="/home">Home</a>
+        <a href="/bookmark">Bookmark</a>
+        <button onClick="logout()">Logout</button>
+        <p/>
+        <p id="error" style="color:red;"></p>
+        <ul id="bookmarkedevents"></ul>
+    </body>
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        axios.get('/bookmarks').then(response=>{
+            document.getElementById("error").innerHTML = '';
+
+            if (response.status === 204) {
+                document.getElementById("bookmarkedevents") = 'No bookmerked events';
+                return;
+            }
+
+            const events = response.data.events;
+            var list = '';
+            for (let i = 0; i < events.length; i++) {
+                list += `
+                <li>
+                    <p/>
+                    <h4>${events[i].name}</h4>
+                    <p>
+                        ${events[i].date}
+                        ${events[i].venue == null ? '' : ' | ' + events[i].venue}
+                        ${events[i].league == null ? '' : ' | ' + events[i].league}
+                        ${events[i].season == null ? '' : ' | Season ' + events[i].season}
+                        ${events[i].round == null ? '' : ' | Round ' + events[i].round}
+                    </p>
+                    <p id="result${events[i].name}${events[i].date}">${events[i].homeTeam == null || events[i].homeScore == null || events[i].awayScore == null || events[i].awayTeam == null ? '' : events[i].homeTeam + ' <strong>' + events[i].homeScore + ' - ' + events[i].awayScore + '</strong> ' + events[i].awayTeam}</p>
+                    <p id="bookmarkedOn${events[i].name}${events[i].date}" style="color:purple;">Bookmarked on: ${events[i].bookmarkedOn}</p>
+                    <p id="video${events[i].name}${events[i].date}">${events[i].video == null || events[i].video.trim() == '' ? '' : '<a href="' + events[i].video + '">Video</a>'}</p>
+                    <button type="button" onclick="removeBookmark('${events[i].name}', '${events[i].date}')">Remove Bookmark</button>
+                    <button type="button" onclick="update('${events[i].name}', '${events[i].date}')">Update Result</button>
+                    <p id="${events[i].name}${events[i].date}"></p>
+                    <p/>
+                    <br/>
+                </li>
+                `;
+            }
+            document.getElementById("bookmarkedevents").innerHTML = list;
+
+        }).catch(error=>{
+            if (error.response.status === 401 || error.response.status === 403) {
+                window.location.href = '/login';
+                return;
+            }
+
+            if (error.response.status === 500) {
+                document.getElementById("error").innerHTML = 'Please try again';
+                return;
+            }
+
+            document.getElementById("error").innerHTML = error;
+            document.getElementById("bookmarkedevents").innerHTML = '';
+        });
+
+        function logout() {
+            axios.post('logout').then(response=>{
+                window.location.href = '/login';
+            }).catch(error=>{
+                document.getElementById("error").innerHTML = error;
+            });
+        }
+
+        function removeBookmark(name, date) {
+            const reference = name + date;
+            const removeBookmarkUrl = '/removebookmark?name=' + name + '&date=' + date;
+                
+            axios.delete(removeBookmarkUrl).then(response=>{
+                document.getElementById(reference).style.color = 'green';
+                document.getElementById(reference).innerHTML = 'Removed';
+
+            }).catch(error=>{
+                document.getElementById(reference).style.color = 'red';
+                
+                if (error.response.status === 400) {
+                    document.getElementById(reference).innerHTML = error.response.data.message;
+                    return;
+                }
+
+                if (error.response.status === 401 || error.response.status === 403) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (error.response.status === 500) {
+                    document.getElementById(reference).innerHTML = 'Please try again';
+                    return;
+                }
+
+                document.getElementById(reference).innerHTML = error;
+            })
+        }
+
+        function update(name, date) {
+            const reference = name + date;
+            const resultReference = "result" + reference;
+            const videoReference = "video" + reference;
+            const bookmarkedOnReference = "bookmarkedOn" + reference;
+
+            axios.post('/update', {
+                name: name,
+                date: date
+            }).then(response=>{
+                document.getElementById(reference).style.color = 'green';
+
+                if (response.status === 204) {
+                    document.getElementById(reference).innerHTML = 'No latest update';
+                    return;
+                }
+                
+                const update = response.data.update;
+
+                document.getElementById(resultReference).innerHTML = update.homeTeam == null || update.homeScore == null || update.awayScore == null || update.awayTeam == null ? '' : `<p>${update.homeTeam} <strong>${update.homeScore}:${update.awayScore}</strong> ${update.awayTeam}<p/>`;
+                document.getElementById(videoReference).innerHTML = update.video == null || update.video.trim() == '' ? '<p/>' : `<p><a href="${update.video}">Video</a><p/>`;
+                document.getElementById(bookmarkedOnReference).innerHTML = `Bookmarked on ${update.bookmarkedOn}`;
+                document.getElementById(reference).innerHTML = 'Updated';
+
+            }).catch(error=>{
+                document.getElementById(reference).style.color = 'red';
+                
+                if (error.response.status === 400) {
+                    document.getElementById(reference).innerHTML = error.response.data.message;
+                    return;
+                }
+
+                if (error.response.status === 401 || error.response.status === 403) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (error.response.status === 500) {
+                    document.getElementById(reference).innerHTML = 'Please try again';
+                    return;
+                }
+
+                document.getElementById(reference).innerHTML = error;
+            })
+        }
+    </script>
+</html>

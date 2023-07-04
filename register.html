@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="EN">
+    <header>
+        <title>Register</title>
+    </header>
+
+    <head>
+        <h1>Register</h1>
+    </head>
+
+    <body>
+        <a href="/login">Login</a>
+        <a href="/register">Register</a>
+        <p/>
+        <label for="username">Username: </label>
+        <input type="text" id="username" value="" required></input>
+        <p/>
+        <label for="password">Password: </label>
+        <input type="password" id="password" value="" required></input>
+        <p/>
+        <button onClick="register()">Register</button>
+        <p id="message"></p>
+    </body>
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-md5@0.7.3/build/md5.min.js"></script>
+    <script>
+        function register() {
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+
+            const hashedPassword = md5(password);
+
+            axios.post('/register', {
+                username: username,
+                password: hashedPassword
+            }).then(response=>{
+                document.getElementById("message").style.color = 'green';
+                document.getElementById("message").innerHTML = response.data.message;
+                    
+            }).catch(error=>{
+                document.getElementById("message").style.color = 'red';
+
+                if (error.response.status === 400) {
+                    document.getElementById("message").innerHTML = error.response.data.message;
+                    return;
+                }
+
+                if (error.response.status === 500) {
+                    document.getElementById("message").innerHTML = 'Please try again';
+                    return;
+                }
+
+                document.getElementById("searcherror").innerHTML = error;
+            });
+        }
+    </script>
+</html>

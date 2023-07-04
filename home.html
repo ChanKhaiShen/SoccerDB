@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="EN">
+    <header>
+        <title>Home</title>
+    </header>
+
+    <head>
+        <h1 >Home Page</h1>
+    </head>
+
+    <body>
+        <a href="/home">Home</a>
+        <a href="/bookmark">Bookmark</a>
+        <button onClick="logout()">Logout</button>
+        <p/>
+        <label for="searcheventname">Search for an soccer event: </label>
+        <input type="text" id="searcheventname" placeholder="Home team vs Away team" value="" required></input>
+        <p/>
+        <label for="searchseason">Specify a season: </label>
+        <input type="text" id="searchseason" placeholder="2022" value=""></input>
+        <p/>
+        <label for="minimumdate">Filter date: from </label>
+        <input type="date" id="minimumdate"></input>
+        <label for="maximumdate"> to </label>
+        <input type="date" id="maximumdate"></input>
+        </p>  
+        <input type="checkbox" id="sortbyawayteam" value="true"></input>
+        <label for="sortbyawayteam">Sort by away team</label>
+        </p>
+        <button onClick="search()">Search</button>
+        <p/>
+        <p id="searcherror" style="color:red;"></p>
+        <ul id="searchresults"></ul>
+    </body>
+    
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        function logout() {
+            axios.post('logout').then(response=>{
+                window.location.href = '/login';
+            }).catch(error=>{
+                document.getElementById("searcherror").innerHTML = error;
+            });
+        }
+
+        function search() {
+            if (document.getElementById("searcheventname").value == '') {
+                document.getElementById("searcherror").innerHTML = 'Please specify event';
+                return;
+            }
+
+            document.getElementById("searcherror").innerHTML = '';
+
+            var search_url = '/search?event=' + document.getElementById("searcheventname").value;
+
+            if (document.getElementById("searchseason").value != '')
+                search_url += '&season=' + document.getElementById("searchseason").value;
+
+            if (document.getElementById("minimumdate").value != '')
+                search_url += '&minimumdate=' + document.getElementById("minimumdate").value;
+
+            if (document.getElementById("maximumdate").value != '')
+                search_url += '&maximumdate=' + document.getElementById("maximumdate").value;
+
+            if (document.getElementById("sortbyawayteam").checked)
+                search_url += '&sortbyawayteam=1';
+                
+            axios.get(search_url).then(response=>{
+                if (response.status === 204) {
+                    document.getElementById("searchresults").innerHTML = 'No event found';
+                    return;
+                }
+
+                const events = response.data.events;
+                var searchResults = '';
+                for (let i = 0; i < events.length; i++) {
+                    searchResults += `
+                        <li>
+                            <p/>
+                            <h4>${events[i].name}</h4>
+                            <p>
+                                ${events[i].date}
+                                ${events[i].venue == null ? '' : ' | ' + events[i].venue}
+                                ${events[i].league == null ? '' : ' | ' + events[i].league}
+                                ${events[i].season == null ? '' : ' | Season ' + events[i].season}
+                                ${events[i].round == null ? '' : ' | Round ' + events[i].round}
+                            </p>
+                            ${events[i].homeTeam == null || events[i].homeScore == null || events[i].awayScore == null || events[i].awayTeam == null ? '' : '<p>' + events[i].homeTeam + ' <strong>' + events[i].homeScore + ' - ' + events[i].awayScore + '</strong> ' + events[i].awayTeam + '</p>'}
+                            <p>${events[i].video == null || events[i].video.trim() == '' ? '' : '<a href="' + events[i].video + '">Video</a>'}</p>
+                            <button type="button" onclick="addBookmark('${events[i].name}', '${events[i].date}')">Bookmark</button>
+                            <p id="${events[i].name}${events[i].date}"></p>
+                            <p/>
+                            <br/>
+                        </li>
+                    `;
+                }
+                document.getElementById("searchresults").innerHTML = searchResults;
+
+            }).catch(error=>{
+                document.getElementById("searchresults").innerHTML = '';
+
+                if (error.response.status === 400) {
+                    document.getElementById("searcherror").innerHTML = error.response.data.message;
+                    return;
+                }
+
+                if (error.response.status === 500) {
+                    document.getElementById("searcherror").innerHTML = 'Please try again';
+                    return;
+                }
+
+                document.getElementById("searcherror").innerHTML = error;
+            });
+        }
+
+        function addBookmark(name, date) {
+            const reference = name + date;
+            
+            axios.post('/addbookmark', {
+                name: name,
+                date: date
+            }).then(response=>{
+                document.getElementById(reference).style.color = 'green';
+
+                if (response.status === 204) {
+                    document.getElementById(reference).innerHTML = 'Event not found';
+                    return;
+                }
+
+                document.getElementById(reference).innerHTML = response.data.message;
+
+            }).catch(error=>{
+                document.getElementById(reference).style.color = 'red';
+
+                if (error.response.status === 400) {
+                    document.getElementById(reference).innerHTML = error.response.data.message;
+                    return;
+                }
+
+                if (error.response.status === 401 || error.response.status === 403) {
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (error.response.status === 500) {
+                    document.getElementById(reference).innerHTML = 'Please try again';
+                    return;
+                }
+
+                document.getElementById(reference).innerHTML = error;
+            })
+        }
+    </script>
+</html>
