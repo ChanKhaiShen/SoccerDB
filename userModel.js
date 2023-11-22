@@ -1,16 +1,10 @@
 const mongoose = require('mongoose');
 
-const databaseUrl = 'mongodb+srv://cks:phgKHFEsoMjL3VAo@cluster0.z5ffg.mongodb.net/SoccerDB';
-
-mongoose.connect(databaseUrl).then(()=>{
-    console.log('Connected to database');
-}).catch(()=>{
-    console.log('Cannot connect ro database');
-});
-
 const userSchema = new mongoose.Schema({
     username: {type: String},
-    password: {type: String}
+    password: {type: String},
+    salt: {type: String},
+    registerDate: {type: Date, default: Date.now}
 });
 
 const userModel = mongoose.model('users', userSchema);

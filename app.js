@@ -4,20 +4,136 @@ const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
+const crypto = require('crypto');
+const mongoose = require('mongoose');
 
 const userModel = require('./userModel');
 const eventModel = require('./eventModel');
+const administratorModel = require('./administratorModel');
+
+// Database connection
+const databaseUrl = 'mongodb+srv://cks:phgKHFEsoMjL3VAo@cluster0.z5ffg.mongodb.net/SoccerDB';
+mongoose.connect(databaseUrl).then(()=>{
+    console.log('Connected to database');
+}).catch(()=>{
+    console.log('Cannot connect to database');
+});
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: "null"
+}));
 
-const SECRETKEY = '937584763542';
+const SECRETKEY = '11911919101929nvsoiniweno230i02jnwqicqw21-ifcn';
+console.log('secret key', SECRETKEY);
+
+const signToken = (req, res, next) => {
+    const authorization = req.header('Authorization');
+    console.log('sign token', authorization);
+
+    if (authorization == null || req.cookies.token != null) {
+        next();
+        return;
+    }
+
+    const authorizationString = authorization.split(' ')[1];
+    const credentials = atob(authorizationString);
+    const [username, password] = credentials.split(':');
+    console.log(username, password);
+
+    userModel.findOne({username: username}).then(result=>{
+        console.log('sign token: Success find ' + result);
+
+        if (result != null) {
+            const salt = result.salt;
+            const correctPassword = result.password;
+
+            crypto.scrypt(password, salt, 256, {N: 512}, (err, derived)=>{
+            
+                if (err != null) {
+                    console.log('sign token error: ', err);
+                    next();
+                    return;
+                }
+
+                const providedPassword = derived.toString('base64');
+
+                if (providedPassword === correctPassword) {
+                    console.log('sign token: signed');
+
+                    const user = {
+                        username: result.username,
+                        role: 'normal user'
+                    }
+
+                    const token = jwt.sign(user, SECRETKEY, { expiresIn: '1h' });
+                    res.cookie('token', token, {httpOnly: true});
+                    req.user = user;
+                    next();
+                }
+            });
+        }
+        else {
+            administratorModel.findOne({username: username}).then(result=>{
+                console.log('sign token: success find', result);
+                
+                if (result != null) {
+                    const salt = result.salt;
+                    const correctPassword = result.password;
+
+                    crypto.scrypt(password, salt, 256, {N: 512}, (err, derived)=>{
+            
+                        if (err != null) {
+                            console.log('sign token error: ', err);
+                            next();
+                            return;
+                        }
+
+                        const providedPassword = derived.toString('base64');
+
+                        if (providedPassword === correctPassword) {
+                            console.log('sign token: signed');
+
+                            const user = {
+                                username: result.username,
+                                role: 'administrator'
+                            }
+
+                            const token = jwt.sign(user, SECRETKEY, { expiresIn: '1h' });
+                            res.cookie('token', token, {httpOnly: true});
+                            req.user = user;
+                            
+                            next();
+                        }
+                    });
+                }
+                else {
+                    next();
+                }
+            }).catch(error=>{
+                console.log('sign token: Error find administrator' + error);
+                res.status(500).send();
+            });
+        }
+    }).catch(error=>{
+        console.log('sign token: Error find ' + error);
+        res.status(500).send();
+    });
+}
+
 const verifyToken = (req, res, next) => {
     const token = req.cookies.token;
     console.log('verifytoken', token);
+
+    if (req.user != null) {
+        console.log(req.user);
+        next();
+        return;
+    }
  
     if (token == null) {
         console.log('verifytoken: no token');
+        res.setHeader('WWW-Authenticate', 'Basic');
         res.status(401).json({
             message: 'No token provided'
         });
@@ -27,7 +143,8 @@ const verifyToken = (req, res, next) => {
     jwt.verify(token, SECRETKEY, (error, decoded) => {
         if (error != null) {
             console.log('verifytoken: fail to authenticate');
-            res.status(403).json({
+            res.setHeader('WWW-Authenticate', 'Basic');
+            res.status(401).json({
                 message: 'Failed to authenticate token'
             });
             return;
@@ -38,20 +155,36 @@ const verifyToken = (req, res, next) => {
     });
 };
 
-app.use(cookieParser()).get('/home', verifyToken, (req, res)=>{
+app.get('/home', (req, res)=>{
     res.status(200).sendFile(path.join(__dirname + '/home.html'));
 });
 
-app.use(cookieParser()).get('/bookmark', verifyToken, (req, res)=>{
+app.get('/home.html', (req, res)=>{
+    res.status(200).sendFile(path.join(__dirname + '/home.html'));
+});
+
+app.get('/bookmark', (req, res)=>{
     res.status(200).sendFile(path.join(__dirname + '/bookmark.html'));
 });
 
-app.get('/login', (req, res)=>{
-    res.status(200).sendFile(path.join(__dirname + '/login.html'));
+app.get('/bookmark.html', (req, res)=>{
+    res.status(200).sendFile(path.join(__dirname + '/bookmark.html'));
 });
 
 app.get('/register', (req, res)=>{
     res.status(200).sendFile(path.join(__dirname + '/register.html'));
+});
+
+app.get('/register.html', (req, res)=>{
+    res.status(200).sendFile(path.join(__dirname + '/register.html'));
+});
+
+app.get('/admin', (req, res)=>{
+    res.status(200).sendFile(path.join(__dirname + '/admin.html'));
+});
+
+app.get('/admin.html', (req, res)=>{
+    res.status(200).sendFile(path.join(__dirname + '/admin.html'));
 });
 
 app.use(express.json()).post('/register', (req, res)=>{
@@ -68,19 +201,33 @@ app.use(express.json()).post('/register', (req, res)=>{
             return;
         }
 
-        const UserValue = new userModel({
-            username: username,
-            password: password
-        });
+        const salt = crypto.randomBytes(32).toString('base64');
 
-        UserValue.save().then(result=>{
-            console.log('register: Success save ' + result);
-            res.status(200).json({
-                message: 'Registered'
+        crypto.scrypt(password, salt, 256, {N: 512}, (err, derived)=>{
+            
+            if (err != null) {
+                console.log('register error: ', err);
+                res.status(500).send();
+                return;
+            }
+
+            const securePassword = derived.toString('base64');
+
+            const UserValue = new userModel({
+                username: username,
+                password: securePassword,
+                salt: salt
             });
-        }).catch(error=>{
-            console.log('register: Error save ' + error);
-            res.status(500).send();
+    
+            UserValue.save().then(result=>{
+                console.log('register: Success save ' + result); 
+                res.status(200).json({
+                    message: 'Registered'
+                });
+            }).catch(error=>{
+                console.log('register: Error save ' + error);
+                res.status(500).send();
+            });
         });
     }).catch(error=>{
         console.log('register: Error find ' + error);
@@ -88,46 +235,11 @@ app.use(express.json()).post('/register', (req, res)=>{
     });
 });
 
-app.use(express.json()).post('/login', (req, res) => {
-    const username = req.body.username;
-    const password = req.body.password;
-    console.log('login', username, password);
-
-    userModel.findOne({username: username, password: password}).then(result=>{
-        console.log('login: Success find ' + result);
-
-        if (result == null) {
-            console.log('login: username or password is wrong');
-            res.status(403).json({
-                message: 'Username or password is wrong'
-            });
-            return;
-        }
-
-        const user = {
-            username: username
-        };
-
-        const token = jwt.sign(user, SECRETKEY, { expiresIn: '1h' });
-
-        console.log('logged in');
-        res.cookie('token', token);
-        res.status(200).json({
-            message: 'Logged in'
-        });
-
-    }).catch(error=>{
-        console.log('login: Error find ' + error);
-        res.status(500).send();
-    });
-});
-
-app.post('/logout', (req, res)=>{
+app.delete('/logout', (req, res)=>{
     console.log('logout');
     res.clearCookie('token');
-    res.status(200).json({
-        message: 'Logged out'
-    });
+    res.setHeader('Clear-Site-Data', '"cache", "cookies"');
+    res.status(401).send();
 });
 
 app.get('/search', (req, res) =>
@@ -233,11 +345,22 @@ app.get('/search', (req, res) =>
     });
 });
 
-app.use(cookieParser()).use(express.json()).post('/addbookmark', verifyToken, (req, res)=>{
+app.use(cookieParser()).use(express.json()).post('/addbookmark', signToken, verifyToken, (req, res)=>{
     const name =  req.body.name;
     const date = req.body.date;
     const username = req.user.username;
-    console.log('addbookmark', name, date, username);
+    const role = req.user.role;
+    console.log('addbookmark', name, date, username, role);
+
+    if (role !== 'normal user') {
+        console.log('users: Not normal user');
+        res.clearCookie('token');
+        res.setHeader('WWW-Authenticate', 'Basic');
+        res.status(401).json({
+            message: 'Not normal user'
+        });
+        return;
+    }
 
     if (name == null || date == null) {
         console.log('addbookmark: name or date null');
@@ -309,9 +432,30 @@ app.use(cookieParser()).use(express.json()).post('/addbookmark', verifyToken, (r
     });
 });
 
-app.use(cookieParser()).get('/bookmarks', verifyToken, (req, res)=>{
+app.use(cookieParser()).get('/bookmarks', signToken, verifyToken, (req, res)=>{
     const username = req.user.username;
+    const role = req.user.role;
     console.log('bookmarks', username);
+
+    if (role !== 'normal user') {
+        console.log('users: Not normal user');
+        res.clearCookie('token');
+        res.setHeader('WWW-Authenticate', 'Basic');
+        res.status(401).json({
+            message: 'Not normal user'
+        });
+        return;
+    }
+
+    if (role !== 'normal user') {
+        console.log('users: Not normal user');
+        res.clearCookie('token');
+        res.setHeader('WWW-Authenticate', 'Basic');
+        res.status(401).json({
+            message: 'Not normal user'
+        });
+        return;
+    }
     
     eventModel.find({user: username}).then(results=>{
         console.log('bookmarks: Success find ' + results);
@@ -350,11 +494,22 @@ app.use(cookieParser()).get('/bookmarks', verifyToken, (req, res)=>{
     });
 });
 
-app.use(cookieParser()).delete('/removebookmark', verifyToken, (req, res)=>{
+app.use(cookieParser()).delete('/removebookmark', signToken, verifyToken, (req, res)=>{
     const name = req.query.name;
     const date = req.query.date;
     const username = req.user.username;
-    console.log('removebookmark', name, date, username);
+    const role = req.user.role;
+    console.log('removebookmark', name, date, username, role);
+
+    if (role !== 'normal user') {
+        console.log('users: Not normal user');
+        res.clearCookie('token');
+        res.setHeader('WWW-Authenticate', 'Basic');
+        res.status(401).json({
+            message: 'Not normal user'
+        });
+        return;
+    }
 
     if (name == null || date == null) {
         console.log('removebookmark: no name or date provided');
@@ -374,11 +529,22 @@ app.use(cookieParser()).delete('/removebookmark', verifyToken, (req, res)=>{
     });
 });
 
-app.use(cookieParser()).use(express.json()).post('/update', verifyToken, (req, res)=>{
+app.use(cookieParser()).use(express.json()).post('/update', signToken, verifyToken, (req, res)=>{
     const name = req.body.name;
     const date = req.body.date;
     const username = req.user.username;
-    console.log('update', name, date, username);
+    const role = req.user.role;
+    console.log('update', name, date, username, role);
+
+    if (role !== 'normal user') {
+        console.log('users: Not normal user');
+        res.clearCookie('token');
+        res.setHeader('WWW-Authenticate', 'Basic');
+        res.status(401).json({
+            message: 'Not normal user'
+        });
+        return;
+    }
 
     if (name == null || date == null) {
         console.log('update: name or date null');
@@ -457,6 +623,100 @@ app.use(cookieParser()).use(express.json()).post('/update', verifyToken, (req, r
 
     }).catch(error=>{
         console.log('update: axios error ' + error);
+        res.status(500).send();
+    });
+});
+
+// Administrator registration
+/*
+const salt = crypto.randomBytes(32).toString('base64');
+crypto.scrypt('My$Password123', salt, 256, {N: 512}, (err, derived)=>{
+    if (err != null) {
+        console.log('register error: ', err);
+        return;
+    }
+
+    const securePassword = derived.toString('base64');
+
+    const administratorValue = new administratorModel({
+        username: 'admin1',
+        password: securePassword,
+        salt: salt
+    });
+    
+    administratorValue.save().then(result=>{
+        console.log('register: Success save ' + result);
+    }).catch(error=>{
+        console.log('register: Error save ' + error);
+    });
+});
+*/
+
+app.get('/users', signToken, verifyToken, (req, res)=>{
+    const role = req.user.role;
+    console.log('users', role);
+
+    if (role !== 'administrator') {
+        console.log('users: Not administrator');
+        res.clearCookie('token');
+        res.setHeader('WWW-Authenticate', 'Basic');
+        res.status(401).json({
+            message: 'Not administrator'
+        });
+        return;
+    }
+
+    userModel.find({}).then(results=>{
+        console.log('users', results);
+
+        const users = [];
+
+        for (var i = 0; i < results.length; i++) {
+            users.push({
+                username: results[i].username,
+                registerDate: results[i].registerDate
+            });
+        }
+
+        res.status(200).json({
+            users: users
+        });
+    }).catch(error=>{
+        console.log('users error', error);
+        res.status(500).send();
+    });
+});
+
+app.delete('/removeuser', signToken, verifyToken, (req, res)=>{
+    const role = req.user.role;
+    const username = req.query.username;
+    console.log('remove user', role, username);
+
+    if (role !== 'administrator') {
+        console.log('remove user: Not administrator');
+        res.clearCookie('token');
+        res.setHeader('WWW-Authenticate', 'Basic');
+        res.status(401).json({
+            message: 'Not administrator'
+        });
+        return;
+    }
+
+    userModel.deleteMany({username: username}).then(response=>{
+        console.log('remove user', response);
+
+        eventModel.deleteMany({user: username}).then(result=>{
+            console.log('remove user event', result);
+            res.status(204).json({
+                message: 'Removed'
+            });
+        }).catch(error=>{
+            console.log('remove user event', error);
+            res.status(500).send();
+        });
+        
+    }).catch(error=>{
+        console.log('remove user', error);
         res.status(500).send();
     });
 });

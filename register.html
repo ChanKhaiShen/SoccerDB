@@ -4,36 +4,168 @@
         <title>Register</title>
     </header>
 
+    <style>
+        .Content {
+            margin: 50px;
+        }
+
+        .Box {
+            text-align: left;
+            padding: 10px;
+            border: solid; 
+            width: 300px;
+        }
+
+        .Box h3, h4 {
+            margin-top: 15px;
+            text-align: center;
+        }
+
+        .Strength {
+            width: 200px;
+            height: 20px;
+        }
+    </style>
+
     <head>
-        <h1>Register</h1>
+        <h1 class="Content">Register</h1>
     </head>
 
     <body>
-        <a href="/login">Login</a>
-        <a href="/register">Register</a>
-        <p/>
-        <label for="username">Username: </label>
-        <input type="text" id="username" value="" required></input>
-        <p/>
-        <label for="password">Password: </label>
-        <input type="password" id="password" value="" required></input>
-        <p/>
-        <button onClick="register()">Register</button>
-        <p id="message"></p>
+        <div class="Content">
+            <a href="./home.html">Home</a>
+            <a href="./bookmark.html">Bookmark</a>
+            <a href="./register.html">Register</a>
+            <p/>
+            <br/>
+            
+            <p/>
+            <label for="username">Username: </label>
+            <input type="text" id="username" value="" required></input>
+
+            <p/>
+            <label for="password">Password: </label>
+            <input type="password" id="password" value="" maxlength="64" oninput="measurePassword()" required></input>
+
+            <p id="message"></p>
+
+            <p/>
+            <button onclick="register()">Register</button>
+            <p/>
+            <br/>
+
+            <p/>
+            <section class="Box">
+                <h3><u>Password Requirements</u></h3>
+
+                <p id="length">&#x2610 10 - 64 characters long</p>
+                <p id="digit">&#x2610 Has digit</p>
+                <p id="lowerCase">&#x2610 Has lower case alphabet</p>
+                <p id="upperCase">&#x2610 Has upper case alphabet</p>
+                <p id="special">&#x2610 Has special character</p>
+
+                <h4><u>Strength Indicator</u></h4>
+                <p style="text-align: center;">Weak <meter  class="Strength" id="strength" max="100" min="0" optimum="65" value="0"></meter> Strong</p>
+            </section>
+        </div>
     </body>
 
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/js-md5@0.7.3/build/md5.min.js"></script>
     <script>
+        function measurePassword() {
+            const password = document.getElementById("password").value;
+
+            var has10Characters = hasDigit = hasLowerCase = hasUpperCase = hasSpecialCharacter = false;
+            
+            // Length
+            if (/.{15,64}/.test(password) === true) {
+                document.getElementById("length").innerHTML = "&#x2611 10 - 64 characters long";
+                has10Characters = true;
+            }
+            else {
+                document.getElementById("length").innerHTML = "&#x2610 10 - 64 characters long";
+                has10Characters = false;
+            }
+
+            // Digit
+            if (/\d/.test(password) === true) {
+                document.getElementById("digit").innerHTML = "&#x2611 Has digit";
+                hasDigit = true;
+            }
+            else {
+                document.getElementById("digit").innerHTML = "&#x2610 Has digit";
+                hasDigit = false;
+            }
+
+            // Lower case alphabet
+            if (/[a-z]/.test(password) === true) {
+                document.getElementById("lowerCase").innerHTML = "&#x2611 Has lower case alphabet";
+                hasLowerCase = true;
+            }
+            else {
+                document.getElementById("lowerCase").innerHTML = "&#x2610 Has lower case alphabet";
+                hasLowerCase = false;
+            }
+
+            // Upper case alphabet
+            if (/[A-Z]/.test(password) === true) {
+                document.getElementById("upperCase").innerHTML = "&#x2611 Has upper case alphabet";
+                hasUpperCase = true;
+            }
+            else {
+                document.getElementById("upperCase").innerHTML = "&#x2610 Has upper case alphabets";
+                hasUpperCase = false;
+            }
+
+            // Special character
+            if (/[ ~ | ` | ! | @ | # | $ | % | ^ | & | * | ( | ) | _ | - | + | = | { | } | \[ | \] | : | ; | " | ' | ? | , | . | \| | \/ | \\ | < | > ]/.test(password) === true) {
+                document.getElementById("special").innerHTML = "&#x2611 Has special character";
+                hasSpecialCharacter = true;
+            }
+            else {
+                document.getElementById("special").innerHTML = "&#x2610 Has special character";
+                hasSpecialCharacter = false;
+            }
+
+            var R = 0;
+            
+            if (hasDigit === true)
+                R = R + 10;
+
+            if (hasLowerCase === true)
+                R = R + 26;
+
+            if (hasUpperCase === true)
+                R = R + 26;
+
+            if (hasSpecialCharacter === true)
+                R = R + 32;
+
+            const L = password.trim().length;
+            const score = Math.log2(R ** L);
+
+            document.getElementById("strength").value = score.toString();
+
+            if (has10Characters === true && hasDigit === true && hasLowerCase === true && hasUpperCase === true && hasSpecialCharacter === true) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+
         function register() {
+            if (measurePassword() === false) {
+                alert('To submit for registration, need to fulfill all requirements');
+                return;
+            }
+
             const username = document.getElementById("username").value;
             const password = document.getElementById("password").value;
 
-            const hashedPassword = md5(password);
-
-            axios.post('/register', {
+            axios.post('http://localhost:5000/register', {
                 username: username,
-                password: hashedPassword
+                password: password
             }).then(response=>{
                 document.getElementById("message").style.color = 'green';
                 document.getElementById("message").innerHTML = response.data.message;
@@ -50,8 +182,6 @@
                     document.getElementById("message").innerHTML = 'Please try again';
                     return;
                 }
-
-                document.getElementById("searcherror").innerHTML = error;
             });
         }
     </script>

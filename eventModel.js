@@ -1,13 +1,5 @@
 const mongoose = require('mongoose');
 
-const databaseUrl = 'mongodb+srv://cks:phgKHFEsoMjL3VAo@cluster0.z5ffg.mongodb.net/SoccerDB';
-
-mongoose.connect(databaseUrl).then(()=>{
-    console.log('Connected to database');
-}).catch(()=>{
-    console.log('Cannot connect ro database');
-});
-
 const eventSchema = new mongoose.Schema({
     name: {type: String},
     league: {type: String},

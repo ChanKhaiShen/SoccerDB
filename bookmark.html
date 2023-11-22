@@ -8,18 +8,28 @@
         <h1 >Bookmarked Events</h1>
     </head>
 
+    <style>
+        .Content {
+            margin: 50px;
+        }
+    </style>
+
     <body>
-        <a href="/home">Home</a>
-        <a href="/bookmark">Bookmark</a>
-        <button onClick="logout()">Logout</button>
-        <p/>
-        <p id="error" style="color:red;"></p>
-        <ul id="bookmarkedevents"></ul>
+        <div class="Content">
+            <a href="./home.html">Home</a>
+            <a href="./bookmark.html">Bookmark</a>
+            <button id="logout" onClick="logout()">Logout</button>
+            <p/>
+            <br/>
+
+            <p id="error" style="color:red;"></p>
+            <ul id="bookmarkedevents"></ul>
+        </div>
     </body>
 
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <script>
-        axios.get('/bookmarks').then(response=>{
+        axios.get('http://localhost:5000/bookmarks').then(response=>{
             document.getElementById("error").innerHTML = '';
 
             if (response.status === 204) {
@@ -28,6 +38,11 @@
             }
 
             const events = response.data.events;
+            if (events.length === 0) {
+                document.getElementById("users") = 'No users';
+                return;
+            }
+
             var list = '';
             for (let i = 0; i < events.length; i++) {
                 list += `
@@ -56,7 +71,7 @@
 
         }).catch(error=>{
             if (error.response.status === 401 || error.response.status === 403) {
-                window.location.href = '/login';
+                document.getElementById("error").innerHTML = 'Not authorised';
                 return;
             }
 
@@ -70,16 +85,22 @@
         });
 
         function logout() {
-            axios.post('logout').then(response=>{
-                window.location.href = '/login';
+            axios.delete('http://localhost:5000/logout').then(response=>{
+                document.getElementById("logout").innerHTML = 'Logged out';
+
             }).catch(error=>{
+                if (error.response.status === 401) {
+                    document.getElementById("logout").innerHTML = 'Logged out';
+                    return;
+                }
+
                 document.getElementById("error").innerHTML = error;
             });
         }
 
         function removeBookmark(name, date) {
             const reference = name + date;
-            const removeBookmarkUrl = '/removebookmark?name=' + name + '&date=' + date;
+            const removeBookmarkUrl = 'http://localhost:5000/removebookmark?name=' + name + '&date=' + date;
                 
             axios.delete(removeBookmarkUrl).then(response=>{
                 document.getElementById(reference).style.color = 'green';
@@ -94,7 +115,7 @@
                 }
 
                 if (error.response.status === 401 || error.response.status === 403) {
-                    window.location.href = '/login';
+                    document.getElementById("error").innerHTML = 'Not authorised';
                     return;
                 }
 
@@ -113,7 +134,7 @@
             const videoReference = "video" + reference;
             const bookmarkedOnReference = "bookmarkedOn" + reference;
 
-            axios.post('/update', {
+            axios.post('http://localhost:5000/update', {
                 name: name,
                 date: date
             }).then(response=>{
@@ -140,7 +161,7 @@
                 }
 
                 if (error.response.status === 401 || error.response.status === 403) {
-                    window.location.href = '/login';
+                    document.getElementById("error").innerHTML = 'Not authorised';
                     return;
                 }
 

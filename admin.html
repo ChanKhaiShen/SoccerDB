@@ -1,0 +1,105 @@
+<html lang="EN">
+    <header>
+        <title>Admin</title>
+    </header>
+
+    <style>
+        .Content {
+            margin: 50px;
+        }
+    </style>
+
+    <head>
+        <h1 class="Content">Admin</h1>
+    </head>
+
+    <body>
+        <div class="Content">
+            <a href="./home.html">Home</a>
+            <a href="./admin.html">Admin</a>
+            <a href="./bookmark.html">Bookmark</a>
+            <button id="logout" onClick="logout()">Logout</button>
+            <p/>
+            <br/>
+
+            <p id="error" style="color:red;"></p>
+            <ul id="users"></ul>
+        </div>
+    </body>
+
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        axios.get('http://localhost:5000/users').then(response=>{
+            document.getElementById("error").innerHTML = '';
+
+            const users = response.data.users;
+            if (users.length === 0) {
+                document.getElementById("users") = 'No users';
+                return;
+            }
+
+            var list = '';
+            for (let i = 0; i < users.length; i++) {
+                list += `
+                <li>
+                    <p/>
+                    <h4>Name: ${users[i].username}</h4>
+                    <p>Register date: ${users[i].registerDate}</p>
+                    <button type="button" onclick="removeUser('${users[i].username}')">Remove User</button>
+                    <p id="${users[i].username}"></p>
+                    <p/>
+                    <br/>
+                </li>
+                `;
+            }
+            document.getElementById("users").innerHTML = list;
+
+        }).catch(error=>{
+            if (error.response.status === 500) {
+                document.getElementById("error").innerHTML = 'Please try again';
+                return;
+            }
+
+            document.getElementById("error").innerHTML = error;
+            document.getElementById("users").innerHTML = '';
+        });
+
+        function logout() {
+            axios.delete('http://localhost:5000/logout').then(response=>{
+                document.getElementById("logout").innerHTML = 'Logged out';
+
+            }).catch(error=>{
+                if (error.response.status === 401) {
+                    document.getElementById("logout").innerHTML = 'Logged out';
+                    return;
+                }
+
+                document.getElementById("error").innerHTML = error;
+            });
+        }
+
+        function removeUser(username) {
+            const removeUserUrl = 'http://localhost:5000/removeuser?username=' + username;
+                
+            axios.delete(removeUserUrl).then(response=>{
+                document.getElementById(username).style.color = 'green';
+                document.getElementById(username).innerHTML = 'Removed';
+
+            }).catch(error=>{
+                document.getElementById(username).style.color = 'red';
+                
+                if (error.response.status === 400) {
+                    document.getElementById(username).innerHTML = error.response.data.message;
+                    return;
+                }
+
+                if (error.response.status === 500) {
+                    document.getElementById(username).innerHTML = 'Please try again';
+                    return;
+                }
+
+                document.getElementById(username).innerHTML = error;
+            });
+        }
+    </script>
+</html>
