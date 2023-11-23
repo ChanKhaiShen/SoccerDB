@@ -48,7 +48,7 @@ const signToken = (req, res, next) => {
             const salt = result.salt;
             const correctPassword = result.password;
 
-            crypto.scrypt(password, salt, 256, {N: 512}, (err, derived)=>{
+            crypto.pbkdf2(password, salt, 100, 512, 'sha-256', (err, derived)=>{
             
                 if (err != null) {
                     console.log('sign token error: ', err);
@@ -69,8 +69,9 @@ const signToken = (req, res, next) => {
                     const token = jwt.sign(user, SECRETKEY, { expiresIn: '1h' });
                     res.cookie('token', token, {httpOnly: true});
                     req.user = user;
-                    next();
                 }
+
+                next();
             });
         }
         else {
@@ -102,9 +103,9 @@ const signToken = (req, res, next) => {
                             const token = jwt.sign(user, SECRETKEY, { expiresIn: '1h' });
                             res.cookie('token', token, {httpOnly: true});
                             req.user = user;
-                            
-                            next();
                         }
+                        
+                        next();
                     });
                 }
                 else {
@@ -203,7 +204,7 @@ app.use(express.json()).post('/register', (req, res)=>{
 
         const salt = crypto.randomBytes(32).toString('base64');
 
-        crypto.scrypt(password, salt, 256, {N: 512}, (err, derived)=>{
+        crypto.pbkdf2(password, salt, 100, 512, 'sha-256', (err, derived)=>{
             
             if (err != null) {
                 console.log('register error: ', err);
@@ -630,7 +631,7 @@ app.use(cookieParser()).use(express.json()).post('/update', signToken, verifyTok
 // Administrator registration
 /*
 const salt = crypto.randomBytes(32).toString('base64');
-crypto.scrypt('My$Password123', salt, 256, {N: 512}, (err, derived)=>{
+crypto.pbkdf2('My$Password123', salt, 100, 512, 'sha-256', (err, derived)=>{
     if (err != null) {
         console.log('register error: ', err);
         return;

@@ -58,7 +58,7 @@
             <section class="Box">
                 <h3><u>Password Requirements</u></h3>
 
-                <p id="length">&#x2610 10 - 64 characters long</p>
+                <p id="length">&#x2610 Minimum 10 characters long (Mandatory)</p>
                 <p id="digit">&#x2610 Has digit</p>
                 <p id="lowerCase">&#x2610 Has lower case alphabet</p>
                 <p id="upperCase">&#x2610 Has upper case alphabet</p>
@@ -78,12 +78,12 @@
             var has10Characters = hasDigit = hasLowerCase = hasUpperCase = hasSpecialCharacter = false;
             
             // Length
-            if (/.{15,64}/.test(password) === true) {
-                document.getElementById("length").innerHTML = "&#x2611 10 - 64 characters long";
+            if (/.{10,}/.test(password) === true) {
+                document.getElementById("length").innerHTML = "&#x2611 Minimum 10 characters long (Mandatory)";
                 has10Characters = true;
             }
             else {
-                document.getElementById("length").innerHTML = "&#x2610 10 - 64 characters long";
+                document.getElementById("length").innerHTML = "&#x2610 Minimum 10 characters long (Mandatory)";
                 has10Characters = false;
             }
 
@@ -156,7 +156,7 @@
 
         function register() {
             if (measurePassword() === false) {
-                alert('To submit for registration, need to fulfill all requirements');
+                alert('Need to fulfill the all password requirements');
                 return;
             }
 
