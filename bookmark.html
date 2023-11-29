@@ -32,14 +32,9 @@
         axios.get('http://localhost:5000/bookmarks').then(response=>{
             document.getElementById("error").innerHTML = '';
 
-            if (response.status === 204) {
-                document.getElementById("bookmarkedevents") = 'No bookmerked events';
-                return;
-            }
-
             const events = response.data.events;
             if (events.length === 0) {
-                document.getElementById("users") = 'No users';
+                document.getElementById("bookmarkedevents").innerHTML = 'No bookmarked events';
                 return;
             }
 

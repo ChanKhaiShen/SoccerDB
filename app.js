@@ -82,7 +82,7 @@ const signToken = (req, res, next) => {
                     const salt = result.salt;
                     const correctPassword = result.password;
 
-                    crypto.scrypt(password, salt, 256, {N: 512}, (err, derived)=>{
+                    crypto.pbkdf2(password, salt, 100, 512, 'sha-256', (err, derived)=>{
             
                         if (err != null) {
                             console.log('sign token error: ', err);

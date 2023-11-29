@@ -34,7 +34,7 @@
 
             const users = response.data.users;
             if (users.length === 0) {
-                document.getElementById("users") = 'No users';
+                document.getElementById("users").innerHTML = 'No users';
                 return;
             }
 
@@ -55,6 +55,11 @@
             document.getElementById("users").innerHTML = list;
 
         }).catch(error=>{
+            if (error.response.status === 401 || error.response.status === 403) {
+                document.getElementById("error").innerHTML = 'Not authorised';
+                return;
+            }
+
             if (error.response.status === 500) {
                 document.getElementById("error").innerHTML = 'Please try again';
                 return;
