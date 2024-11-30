@@ -491,7 +491,7 @@ app.use(cookieParser()).get('/bookmarks', signToken, verifyToken, (req, res)=>{
 
     }).catch(error=>{
         console.log('Error find ' + error);
-        res.status(500);
+        res.status(500).send();
     });
 });
 
